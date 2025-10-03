@@ -1,5 +1,7 @@
-module.exports = (sequelize, Sequelize) => {
-  const Session = sequelize.define("session", {
+import Sequelize from "sequelize";
+import SequelizeInstance from "../config/sequelizeInstance.js";
+
+const Session = SequelizeInstance.define("sessions", {
     id: {
       type: Sequelize.INTEGER,
       autoIncrement: true,
@@ -19,5 +21,4 @@ module.exports = (sequelize, Sequelize) => {
     },
   });
 
-  return Session;
-};
+export default Session;

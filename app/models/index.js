@@ -1,23 +1,23 @@
-const dbConfig = require("../config/db.config.js");
-const Sequelize = require("sequelize");
-const sequelize = new Sequelize(dbConfig.DB, dbConfig.USER, dbConfig.PASSWORD, {
-  host: dbConfig.HOST,
-  dialect: dbConfig.dialect,
-  pool: {
-    max: dbConfig.pool.max,
-    min: dbConfig.pool.min,
-    acquire: dbConfig.pool.acquire,
-    idle: dbConfig.pool.idle,
-  },
-});
+import dbConfig from "../config/db.config.js";
+import { Sequelize } from "sequelize";
+import sequelize from "../config/sequelizeInstance.js";
+
+// Models
+
+import User from "./user.model.js";
+import Session from "./session.model.js";
+import Tutorial from "./tutorial.model.js";
+import Lesson from "./lesson.model.js"; 
+
+
 const db = {};
 db.Sequelize = Sequelize;
 db.sequelize = sequelize;
 
-db.user = require("./user.model.js")(sequelize, Sequelize);
-db.session = require("./session.model.js")(sequelize, Sequelize);
-db.tutorial = require("./tutorial.model.js")(sequelize, Sequelize);
-db.lesson = require("./lesson.model.js")(sequelize, Sequelize);
+db.user = User;
+db.session = Session;
+db.tutorial = Tutorial;
+db.lesson = Lesson;
 
 // foreign key for session
 db.user.hasMany(
@@ -55,4 +55,4 @@ db.lesson.belongsTo(
   { foreignKey: { allowNull: false }, onDelete: "CASCADE" }
 );
 
-module.exports = db;
+export default db;

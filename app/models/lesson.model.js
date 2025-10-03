@@ -1,5 +1,7 @@
-module.exports = (sequelize, Sequelize) => {
-  const Lesson = sequelize.define("lesson", {
+import Sequelize from "sequelize";
+import SequelizeInstance from "../config/sequelizeInstance.js";
+
+const Lesson = SequelizeInstance.define("lesson", {
     title: {
       type: Sequelize.STRING,
     },
@@ -10,5 +12,5 @@ module.exports = (sequelize, Sequelize) => {
       type: Sequelize.BOOLEAN,
     },
   });
-  return Lesson;
-};
+
+export default Lesson;

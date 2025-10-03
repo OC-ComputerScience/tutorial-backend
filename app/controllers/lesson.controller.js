@@ -1,6 +1,7 @@
-const db = require("../models");
+import db  from "../models/index.js";
 const Lesson = db.lesson;
 const Op = db.Sequelize.Op;
+const exports = {};
 // Create and Save a new Lesson
 exports.create = (req, res) => {
   // Validate request
@@ -130,22 +131,7 @@ exports.delete = (req, res) => {
       });
     });
 };
-// Delete all Lessons from the database.
-exports.deleteAll = (req, res) => {
-  Lesson.destroy({
-    where: {},
-    truncate: false,
-  })
-    .then((nums) => {
-      res.send({ message: `${nums} Lessons were deleted successfully!` });
-    })
-    .catch((err) => {
-      res.status(500).send({
-        message:
-          err.message || "Some error occurred while removing all lessons.",
-      });
-    });
-};
+
 // Find all published Lessons
 exports.findAllPublished = (req, res) => {
   const lessonId = req.query.lessonId;
@@ -160,3 +146,5 @@ exports.findAllPublished = (req, res) => {
       });
     });
 };
+
+export default exports;

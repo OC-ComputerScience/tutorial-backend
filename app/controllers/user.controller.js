@@ -1,7 +1,7 @@
-const db = require("../models");
+import db  from "../models/index.js";
 const User = db.user;
 const Op = db.Sequelize.Op;
-
+const exports = {};
 // Create and Save a new User
 exports.create = (req, res) => {
   // Validate request
@@ -147,19 +147,5 @@ exports.delete = (req, res) => {
     });
 };
 
-// Delete all People from the database.
-exports.deleteAll = (req, res) => {
-  User.destroy({
-    where: {},
-    truncate: false,
-  })
-    .then((nums) => {
-      res.send({ message: `${nums} People were deleted successfully!` });
-    })
-    .catch((err) => {
-      res.status(500).send({
-        message:
-          err.message || "Some error occurred while removing all people.",
-      });
-    });
-};
+
+export default exports;

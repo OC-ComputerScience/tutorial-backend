@@ -1,6 +1,7 @@
-const db = require("../models");
+import db  from "../models/index.js";
 const Tutorial = db.tutorial;
 const Op = db.Sequelize.Op;
+const exports = {};
 // Create and Save a new Tutorial
 exports.create = (req, res) => {
   // Validate request
@@ -131,19 +132,5 @@ exports.delete = (req, res) => {
       });
     });
 };
-// Delete all Tutorials from the database.
-exports.deleteAll = (req, res) => {
-  Tutorial.destroy({
-    where: {},
-    truncate: false,
-  })
-    .then((nums) => {
-      res.send({ message: `${nums} Tutorials were deleted successfully!` });
-    })
-    .catch((err) => {
-      res.status(500).send({
-        message:
-          err.message || "Some error occurred while removing all tutorials.",
-      });
-    });
-};
+
+export default exports;

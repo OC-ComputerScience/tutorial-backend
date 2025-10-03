@@ -1,7 +1,9 @@
-module.exports = (app) => {
-  const auth = require("../controllers/auth.controller.js");
+  import auth from "../controllers/auth.controller.js";
+  import authenticate from "../authorization/authorization.js";
+  import { Router } from "express";
+  var router = Router()
 
-  var router = require("express").Router();
+
 
   // Login
   router.post("/login", auth.login);
@@ -12,5 +14,5 @@ module.exports = (app) => {
   // Logout
   router.post("/logout", auth.logout);
 
-  app.use("/tutorial", router);
-};
+ export default router
+
