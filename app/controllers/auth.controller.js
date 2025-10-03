@@ -1,23 +1,25 @@
-const db = require("../models");
-const authconfig = require("../config/auth.config");
+import db  from "../models/index.js";
+import authconfig  from "../config/auth.config.js";
+import { OAuth2Client } from "google-auth-library";
+import  { google } from "googleapis";
+import jwt from "jsonwebtoken";
+
 const User = db.user;
 const Session = db.session;
 const Op = db.Sequelize.Op;
-
-const { google } = require("googleapis");
-
-var jwt = require("jsonwebtoken");
 
 let googleUser = {};
 
 const google_id = process.env.CLIENT_ID;
 
+const exports = {};
+
 exports.login = async (req, res) => {
-  console.log(req.body);
+ 
 
   var googleToken = req.body.credential;
 
-  const { OAuth2Client } = require("google-auth-library");
+ 
   const client = new OAuth2Client(google_id);
   async function verify() {
     const ticket = await client.verifyIdToken({
@@ -54,7 +56,6 @@ exports.login = async (req, res) => {
     lastName = data.family_name;
   }
 
-  console.log(lastName);
 
   let user = {};
   let session = {};
@@ -82,23 +83,23 @@ exports.login = async (req, res) => {
 
   // this lets us get the user id
   if (user.id === undefined) {
-    console.log("need to get user's id");
-    console.log(user);
+  
     await User.create(user)
       .then((data) => {
-        console.log("user was registered");
         user = data.dataValues;
-        // res.send({ message: "User was registered successfully!" });
+        res.status(200).send({ message: "User was registered successfully!" });
+        return
       })
       .catch((err) => {
         res.status(500).send({ message: err.message });
+        return;
       });
   } else {
-    console.log(user);
+    
     // doing this to ensure that the user's name is the one listed with Google
     user.fName = firstName;
     user.lName = lastName;
-    console.log(user);
+  
     await User.update(user, { where: { id: user.id } })
       .then((num) => {
         if (num == 1) {
@@ -324,3 +325,4 @@ exports.logout = async (req, res) => {
     });
   }
 };
+export default exports;

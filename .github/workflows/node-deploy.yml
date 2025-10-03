@@ -18,10 +18,12 @@ jobs:
       CLIENT_ID: ${{secrets.CLIENT_ID}}
       CLIENT_SECRET: ${{secrets.CLIENT_SECRET}}
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v5
         with:
           ref: dev
-      - uses: actions/setup-node@v1
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
       - run: npm install
 
       - run: |

@@ -1,9 +1,9 @@
-const db = require("../models");
+import db  from "../models/index.js";
 const Session = db.session;
 
-authenticate = (req, res, next) => {
+const authenticate = (req, res, next) => {
   let token = null;
-  console.log("authenticate");
+ 
   let authHeader = req.get("authorization");
   if (authHeader != null) {
     if (authHeader.startsWith("Bearer ")) {
@@ -34,8 +34,6 @@ authenticate = (req, res, next) => {
   }
 };
 
-const auth = {
-  authenticate: authenticate,
-};
 
-module.exports = auth;
+
+export default authenticate;

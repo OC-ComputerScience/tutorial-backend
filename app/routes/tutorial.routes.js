@@ -1,7 +1,8 @@
-module.exports = (app) => {
-  const tutorials = require("../controllers/tutorial.controller.js");
-  const { authenticate } = require("../authorization/authorization.js");
-  var router = require("express").Router();
+  import tutorials from "../controllers/tutorial.controller.js";
+  import authenticate from "../authorization/authorization.js";
+  import { Router } from "express";
+  var router = Router()
+
 
   // Create a new Tutorial
   router.post("/", [authenticate], tutorials.create);
@@ -21,8 +22,6 @@ module.exports = (app) => {
   // Delete a Tutorial with id
   router.delete("/:id", [authenticate], tutorials.delete);
 
-  // Delete all Tutorials
-  router.delete("/", [authenticate], tutorials.deleteAll);
 
-  app.use("/tutorial/tutorials", router);
-};
+  export default router;
+

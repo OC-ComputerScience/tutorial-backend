@@ -1,7 +1,7 @@
-module.exports = (app) => {
-  const lessons = require("../controllers/lesson.controller.js");
-  const { authenticate } = require("../authorization/authorization.js");
-  var router = require("express").Router();
+  import lessons from "../controllers/lesson.controller.js";
+  import authenticate from "../authorization/authorization.js";
+  import { Router } from "express";
+  var router = Router()
 
   // Create a new Lesson for a Tutorial
   router.post("/:tutorialId/lessons/", [authenticate], lessons.create);
@@ -29,8 +29,4 @@ module.exports = (app) => {
   // Delete a Lesson with id
   router.delete("/:tutorialId/lessons/:id", [authenticate], lessons.delete);
 
-  // Delete all Lessons
-  router.delete("/:tutorialId/lessons/:id", [authenticate], lessons.deleteAll);
-
-  app.use("/tutorial/tutorials", router);
-};
+export default router
