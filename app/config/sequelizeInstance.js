@@ -14,7 +14,7 @@ const sequelize = new Sequelize(
       acquire: dbConfig.pool.acquire,
       idle: dbConfig.pool.idle,
     },
-    logging: false, // Enable SQL query logging
+    logging: false, // Disable SQL query logging (set to console.log to enable)
   },
 );
 

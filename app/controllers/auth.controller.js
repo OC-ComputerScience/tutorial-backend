@@ -250,6 +250,12 @@ exports.authorize = async (req, res) => {
       if (data != null) {
         user = data.dataValues;
         logger.debug(`User found for authorization: ${user.email}`);
+      } else {
+        logger.warn(`User not found for authorization: ${req.params.id}`);
+        res.status(404).send({ 
+          message: `User with id ${req.params.id} not found` 
+        });
+        return;
       }
     })
     .catch((err) => {
@@ -257,6 +263,11 @@ exports.authorize = async (req, res) => {
       res.status(500).send({ message: err.message });
       return;
     });
+
+  // Check if user was found before continuing
+  if (!user.id) {
+    return; // User not found, response already sent
+  }
   
   user.refresh_token = tokens.refresh_token;
   let tempExpirationDate = new Date();
