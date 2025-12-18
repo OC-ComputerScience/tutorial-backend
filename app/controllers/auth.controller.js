@@ -87,6 +87,7 @@ exports.login = async (req, res) => {
     .catch((err) => {
       logger.error(`Error finding user: ${err.message}`);
       res.status(500).send({ message: err.message });
+      return;
     });
 
   // this lets us get the user id
@@ -97,8 +98,6 @@ exports.login = async (req, res) => {
       .then((data) => {
         user = data.dataValues;
         logger.info(`User registered successfully: ${user.id} - ${user.email}`);
-        res.status(200).send({ message: "User was registered successfully!" });
-        return
       })
       .catch((err) => {
         logger.error(`Error creating user: ${err.message}`);
@@ -149,6 +148,7 @@ exports.login = async (req, res) => {
                 res.send({
                   message: `Error logging out user.`,
                 });
+                return;
               }
             })
             .catch((err) => {
@@ -156,6 +156,7 @@ exports.login = async (req, res) => {
               res.status(500).send({
                 message: "Error logging out user.",
               });
+              return;
             });
           //reset session to be null since we need to make another one
           session = {};
@@ -172,6 +173,7 @@ exports.login = async (req, res) => {
           };
           logger.info(`Valid session found for ${email}, reusing existing session`);
           res.send(userInfo);
+          return;
         }
       }
     })
@@ -181,6 +183,7 @@ exports.login = async (req, res) => {
         message:
           err.message || "Some error occurred while retrieving sessions.",
       });
+      return;
     });
 
   if (session.id === undefined) {
@@ -191,7 +194,7 @@ exports.login = async (req, res) => {
     });
     let tempExpirationDate = new Date();
     tempExpirationDate.setDate(tempExpirationDate.getDate() + 1);
-    const session = {
+    const newSession = {
       token: token,
       email: email,
       userId: user.id,
@@ -200,7 +203,7 @@ exports.login = async (req, res) => {
 
     logger.debug(`Session created with expiration: ${tempExpirationDate}`);
 
-    await Session.create(session)
+    await Session.create(newSession)
       .then(() => {
         let userInfo = {
           email: user.email,
@@ -247,6 +250,12 @@ exports.authorize = async (req, res) => {
       if (data != null) {
         user = data.dataValues;
         logger.debug(`User found for authorization: ${user.email}`);
+      } else {
+        logger.warn(`User not found for authorization: ${req.params.id}`);
+        res.status(404).send({ 
+          message: `User with id ${req.params.id} not found` 
+        });
+        return;
       }
     })
     .catch((err) => {
@@ -254,6 +263,11 @@ exports.authorize = async (req, res) => {
       res.status(500).send({ message: err.message });
       return;
     });
+
+  // Check if user was found before continuing
+  if (!user.id) {
+    return; // User not found, response already sent
+  }
   
   user.refresh_token = tokens.refresh_token;
   let tempExpirationDate = new Date();
