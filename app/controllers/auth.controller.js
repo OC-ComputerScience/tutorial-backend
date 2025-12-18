@@ -3,6 +3,7 @@ import authconfig  from "../config/auth.config.js";
 import { OAuth2Client } from "google-auth-library";
 import  { google } from "googleapis";
 import jwt from "jsonwebtoken";
+import logger from "../config/logger.js";
 
 const User = db.user;
 const Session = db.session;
@@ -15,11 +16,10 @@ const google_id = process.env.CLIENT_ID;
 const exports = {};
 
 exports.login = async (req, res) => {
- 
+  logger.info('Login attempt initiated');
 
   var googleToken = req.body.credential;
 
- 
   const client = new OAuth2Client(google_id);
   async function verify() {
     const ticket = await client.verifyIdToken({
@@ -27,9 +27,11 @@ exports.login = async (req, res) => {
       audience: google_id,
     });
     googleUser = ticket.getPayload();
-    console.log("Google payload is " + JSON.stringify(googleUser));
+    logger.debug(`Google authentication successful for email: ${googleUser.email}`);
   }
-  await verify().catch(console.error);
+  await verify().catch((err) => {
+    logger.error(`Google token verification failed: ${err.message}`);
+  });
 
   let email = googleUser.email;
   let firstName = googleUser.given_name;
@@ -43,6 +45,7 @@ exports.login = async (req, res) => {
       lastName === undefined) &&
     req.body.accessToken !== undefined
   ) {
+    logger.debug('Fetching additional user info from Google API');
     let oauth2Client = new OAuth2Client(google_id); // create new auth client
     oauth2Client.setCredentials({ access_token: req.body.accessToken }); // use the new auth client with the access_token
     let oauth2 = google.oauth2({
@@ -50,7 +53,7 @@ exports.login = async (req, res) => {
       version: "v2",
     });
     let { data } = await oauth2.userinfo.get(); // get user info
-    console.log(data);
+    logger.debug(`Retrieved user info from Google: ${data.email}`);
     email = data.email;
     firstName = data.given_name;
     lastName = data.family_name;
@@ -60,6 +63,8 @@ exports.login = async (req, res) => {
   let user = {};
   let session = {};
 
+  logger.debug(`Looking up user by email: ${email}`);
+  
   await User.findOne({
     where: {
       email: email,
@@ -68,6 +73,7 @@ exports.login = async (req, res) => {
     .then((data) => {
       if (data != null) {
         user = data.dataValues;
+        logger.debug(`Existing user found: ${email}`);
       } else {
         // create a new User and save to database
         user = {
@@ -75,22 +81,27 @@ exports.login = async (req, res) => {
           lName: lastName,
           email: email,
         };
+        logger.debug(`New user to be created: ${email}`);
       }
     })
     .catch((err) => {
+      logger.error(`Error finding user: ${err.message}`);
       res.status(500).send({ message: err.message });
     });
 
   // this lets us get the user id
   if (user.id === undefined) {
-  
+    logger.info(`Creating new user: ${user.email}`);
+    
     await User.create(user)
       .then((data) => {
         user = data.dataValues;
+        logger.info(`User registered successfully: ${user.id} - ${user.email}`);
         res.status(200).send({ message: "User was registered successfully!" });
         return
       })
       .catch((err) => {
+        logger.error(`Error creating user: ${err.message}`);
         res.status(500).send({ message: err.message });
         return;
       });
@@ -103,19 +114,18 @@ exports.login = async (req, res) => {
     await User.update(user, { where: { id: user.id } })
       .then((num) => {
         if (num == 1) {
-          console.log("updated user's name");
+          logger.info(`Updated user name: ${user.id}`);
         } else {
-          console.log(
-            `Cannot update User with id=${user.id}. Maybe User was not found or req.body is empty!`
-          );
+          logger.warn(`Cannot update user with id=${user.id}. User not found or empty body`);
         }
       })
       .catch((err) => {
-        console.log("Error updating User with id=" + user.id + " " + err);
+        logger.error(`Error updating user ${user.id}: ${err.message}`);
       });
   }
 
   // try to find session first
+  logger.debug(`Looking for existing session for: ${email}`);
 
   await Session.findOne({
     where: {
@@ -127,21 +137,22 @@ exports.login = async (req, res) => {
       if (data !== null) {
         session = data.dataValues;
         if (session.expirationDate < Date.now()) {
+          logger.info(`Session expired for ${email}, clearing token`);
           session.token = "";
           // clear session's token if it's expired
           await Session.update(session, { where: { id: session.id } })
             .then((num) => {
               if (num == 1) {
-                console.log("successfully logged out");
+                logger.info('Expired session cleared successfully');
               } else {
-                console.log("failed");
+                logger.error('Failed to clear expired session');
                 res.send({
                   message: `Error logging out user.`,
                 });
               }
             })
             .catch((err) => {
-              console.log(err);
+              logger.error(`Error clearing expired session: ${err.message}`);
               res.status(500).send({
                 message: "Error logging out user.",
               });
@@ -159,13 +170,13 @@ exports.login = async (req, res) => {
             // refresh_token: user.refresh_token,
             // expiration_date: user.expiration_date
           };
-          console.log("found a session, don't need to make another one");
-          console.log(userInfo);
+          logger.info(`Valid session found for ${email}, reusing existing session`);
           res.send(userInfo);
         }
       }
     })
     .catch((err) => {
+      logger.error(`Error retrieving session: ${err.message}`);
       res.status(500).send({
         message:
           err.message || "Some error occurred while retrieving sessions.",
@@ -174,6 +185,7 @@ exports.login = async (req, res) => {
 
   if (session.id === undefined) {
     // create a new Session with an expiration date and save to database
+    logger.info(`Creating new session for ${email}`);
     let token = jwt.sign({ id: email }, authconfig.secret, {
       expiresIn: 86400,
     });
@@ -186,8 +198,7 @@ exports.login = async (req, res) => {
       expirationDate: tempExpirationDate,
     };
 
-    console.log("making a new session");
-    console.log(session);
+    logger.debug(`Session created with expiration: ${tempExpirationDate}`);
 
     await Session.create(session)
       .then(() => {
@@ -200,30 +211,32 @@ exports.login = async (req, res) => {
           // refresh_token: user.refresh_token,
           // expiration_date: user.expiration_date
         };
-        console.log(userInfo);
+        logger.info(`Login successful for user: ${user.email}`);
         res.send(userInfo);
       })
       .catch((err) => {
+        logger.error(`Error creating session: ${err.message}`);
         res.status(500).send({ message: err.message });
       });
   }
 };
 
 exports.authorize = async (req, res) => {
-  console.log("authorize client");
+  logger.info(`Authorization request for user: ${req.params.id}`);
+  
   const oauth2Client = new google.auth.OAuth2(
     process.env.CLIENT_ID,
     process.env.CLIENT_SECRET,
     "postmessage"
   );
 
-  console.log("authorize token");
+  logger.debug('Exchanging authorization code for tokens');
   // Get access and refresh tokens (if access_type is offline)
   let { tokens } = await oauth2Client.getToken(req.body.code);
   oauth2Client.setCredentials(tokens);
 
   let user = {};
-  console.log("findUser");
+  logger.debug(`Finding user with id: ${req.params.id}`);
 
   await User.findOne({
     where: {
@@ -233,14 +246,15 @@ exports.authorize = async (req, res) => {
     .then((data) => {
       if (data != null) {
         user = data.dataValues;
+        logger.debug(`User found for authorization: ${user.email}`);
       }
     })
     .catch((err) => {
+      logger.error(`Error finding user for authorization: ${err.message}`);
       res.status(500).send({ message: err.message });
       return;
     });
-  console.log("user");
-  console.log(user);
+  
   user.refresh_token = tokens.refresh_token;
   let tempExpirationDate = new Date();
   tempExpirationDate.setDate(tempExpirationDate.getDate() + 100);
@@ -249,30 +263,30 @@ exports.authorize = async (req, res) => {
   await User.update(user, { where: { id: user.id } })
     .then((num) => {
       if (num == 1) {
-        console.log("updated user's google token stuff");
+        logger.info(`Updated Google OAuth tokens for user: ${user.id}`);
       } else {
-        console.log(
-          `Cannot update User with id=${user.id}. Maybe User was not found or req.body is empty!`
-        );
+        logger.warn(`Cannot update user ${user.id}. User not found or empty body`);
       }
       let userInfo = {
         refresh_token: user.refresh_token,
         expiration_date: user.expiration_date,
       };
-      console.log(userInfo);
       res.send(userInfo);
     })
     .catch((err) => {
+      logger.error(`Error updating user tokens: ${err.message}`);
       res.status(500).send({ message: err.message });
+      return
     });
 
-  console.log(tokens);
-  console.log(oauth2Client);
+  logger.debug('Authorization complete');
 };
 
 exports.logout = async (req, res) => {
-  console.log(req.body);
+  logger.info('Logout request received');
+  
   if (req.body === null) {
+    logger.warn('Logout attempt with null body');
     res.send({
       message: "User has already been successfully logged out!",
     });
@@ -282,11 +296,16 @@ exports.logout = async (req, res) => {
   // invalidate session -- delete token out of session table
   let session = {};
 
+  logger.debug('Looking up session for logout');
   await Session.findAll({ where: { token: req.body.token } })
     .then((data) => {
-      if (data[0] !== undefined) session = data[0].dataValues;
+      if (data[0] !== undefined) {
+        session = data[0].dataValues;
+        logger.debug(`Session found for logout: ${session.email}`);
+      }
     })
     .catch((err) => {
+      logger.error(`Error retrieving session for logout: ${err.message}`);
       res.status(500).send({
         message:
           err.message || "Some error occurred while retrieving sessions.",
@@ -301,25 +320,25 @@ exports.logout = async (req, res) => {
     Session.update(session, { where: { id: session.id } })
       .then((num) => {
         if (num == 1) {
-          console.log("successfully logged out");
+          logger.info(`User logged out successfully: ${session.email}`);
           res.send({
             message: "User has been successfully logged out!",
           });
         } else {
-          console.log("failed");
+          logger.error('Failed to clear session token');
           res.send({
             message: `Error logging out user.`,
           });
         }
       })
       .catch((err) => {
-        console.log(err);
+        logger.error(`Error during logout: ${err.message}`);
         res.status(500).send({
           message: "Error logging out user.",
         });
       });
   } else {
-    console.log("already logged out");
+    logger.warn('Logout attempt for already logged out user');
     res.send({
       message: "User has already been successfully logged out!",
     });

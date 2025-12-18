@@ -1,4 +1,6 @@
 import db  from "../models/index.js";
+import logger from "../config/logger.js";
+
 const Lesson = db.lesson;
 const Op = db.Sequelize.Op;
 const exports = {};
@@ -6,6 +8,7 @@ const exports = {};
 exports.create = (req, res) => {
   // Validate request
   if (!req.body.title) {
+    logger.warn('Lesson creation attempt with empty title');
     res.status(400).send({
       message: "Content can not be empty!",
     });
@@ -19,12 +22,17 @@ exports.create = (req, res) => {
     description: req.body.description,
     published: req.body.published ? req.body.published : false,
   };
+  
+  logger.debug(`Creating lesson: ${lesson.title} for tutorial: ${lesson.tutorialId}`);
+  
   // Save Lesson in the database
   Lesson.create(lesson)
     .then((data) => {
+      logger.info(`Lesson created successfully: ${data.id} - ${data.title}`);
       res.send(data);
     })
     .catch((err) => {
+      logger.error(`Error creating lesson: ${err.message}`);
       res.status(500).send({
         message:
           err.message || "Some error occurred while creating the Lesson.",
@@ -42,11 +50,15 @@ exports.findAll = (req, res) => {
       }
     : null;
 
+  logger.debug(`Fetching all lessons with condition: ${JSON.stringify(condition)}`);
+
   Lesson.findAll({ where: condition })
     .then((data) => {
+      logger.info(`Retrieved ${data.length} lessons`);
       res.send(data);
     })
     .catch((err) => {
+      logger.error(`Error retrieving lessons: ${err.message}`);
       res.status(500).send({
         message: err.message || "Some error occurred while retrieving lessons.",
       });
@@ -69,17 +81,22 @@ exports.findAllForTutorial = (req, res) => {
 // Find a single Lesson with an id
 exports.findOne = (req, res) => {
   const id = req.params.id;
+  logger.debug(`Finding lesson with id: ${id}`);
+  
   Lesson.findByPk(id)
     .then((data) => {
       if (data) {
+        logger.info(`Lesson found: ${id}`);
         res.send(data);
       } else {
+        logger.warn(`Lesson not found with id: ${id}`);
         res.status(404).send({
           message: `Cannot find Lesson with id=${id}.`,
         });
       }
     })
     .catch((err) => {
+      logger.error(`Error retrieving lesson ${id}: ${err.message}`);
       res.status(500).send({
         message: "Error retrieving Lesson with id=" + id,
       });
@@ -88,21 +105,26 @@ exports.findOne = (req, res) => {
 // Update a Lesson by the id in the request
 exports.update = (req, res) => {
   const id = req.params.id;
+  logger.debug(`Updating lesson ${id} with data: ${JSON.stringify(req.body)}`);
+  
   Lesson.update(req.body, {
     where: { id: id },
   })
     .then((num) => {
       if (num == 1) {
+        logger.info(`Lesson ${id} updated successfully`);
         res.send({
           message: "Lesson was updated successfully.",
         });
       } else {
+        logger.warn(`Failed to update lesson ${id} - not found or empty body`);
         res.send({
           message: `Cannot update Lesson with id=${id}. Maybe Lesson was not found or req.body is empty!`,
         });
       }
     })
     .catch((err) => {
+      logger.error(`Error updating lesson ${id}: ${err.message}`);
       res.status(500).send({
         message: "Error updating Lesson with id=" + id,
       });
@@ -111,21 +133,26 @@ exports.update = (req, res) => {
 // Delete a Lesson with the specified id in the request
 exports.delete = (req, res) => {
   const id = req.params.id;
+  logger.debug(`Attempting to delete lesson: ${id}`);
+  
   Lesson.destroy({
     where: { id: id },
   })
     .then((num) => {
       if (num == 1) {
+        logger.info(`Lesson ${id} deleted successfully`);
         res.send({
           message: "Lesson was deleted successfully!",
         });
       } else {
+        logger.warn(`Cannot delete lesson ${id} - not found`);
         res.send({
           message: `Cannot delete Lesson with id=${id}. Maybe Lesson was not found!`,
         });
       }
     })
     .catch((err) => {
+      logger.error(`Error deleting lesson ${id}: ${err.message}`);
       res.status(500).send({
         message: "Could not delete Lesson with id=" + id,
       });
