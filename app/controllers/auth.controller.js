@@ -276,6 +276,7 @@ exports.authorize = async (req, res) => {
     .catch((err) => {
       logger.error(`Error updating user tokens: ${err.message}`);
       res.status(500).send({ message: err.message });
+      return
     });
 
   logger.debug('Authorization complete');
