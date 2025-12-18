@@ -39,6 +39,11 @@ const authenticate = (req, res, next) => {
             message: "Error during authentication",
           });
         });
+    } else {
+      logger.warn('Authentication failed: invalid authorization format (must be Bearer token)');
+      return res.status(401).send({
+        message: "Unauthorized! Invalid authorization format. Expected 'Bearer <token>'",
+      });
     }
   } else {
     logger.warn('Authentication failed: no authorization header');
